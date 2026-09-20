@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: REPLACE_WITH_YOUR_GIT_REPO_URL
+    repoURL: https://github.com/mgd/pi-ota-dvr.git
     targetRevision: main
     path: apps
     directory:
