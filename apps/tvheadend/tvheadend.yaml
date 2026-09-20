@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: media
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tvheadend-config
+  namespace: media
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: recordings
+  namespace: media
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 800Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tvheadend
+  namespace: media
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate   # avoid two pods fighting over the same PVC / tuner
+  selector:
+    matchLabels:
+      app: tvheadend
+  template:
+    metadata:
+      labels:
+        app: tvheadend
+    spec:
+      hostNetwork: true   # required for HDHomeRun SSDP discovery
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: tvheadend
+          image: lscr.io/linuxserver/tvheadend:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "America/New_York"   # change to your timezone
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: recordings
+              mountPath: /recordings
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "768Mi"
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: tvheadend-config
+        - name: recordings
+          persistentVolumeClaim:
+            claimName: recordings

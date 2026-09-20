@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: plex-config
+  namespace: media
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plex
+  namespace: media
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: plex
+  template:
+    metadata:
+      labels:
+        app: plex
+    spec:
+      hostNetwork: true   # required for DLNA/GDM discovery on the LAN
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: plex
+          image: lscr.io/linuxserver/plex:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "America/New_York"   # change to your timezone
+            - name: VERSION
+              value: "docker"
+            # First run only: grab a claim token from https://plex.tv/claim
+            # (valid ~4 min), then remove this env var after first sync.
+            # - name: PLEX_CLAIM
+            #   value: "claim-XXXXXXXXXXXX"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: recordings
+              mountPath: /recordings
+              readOnly: true
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "2"
+              memory: "1.5Gi"
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: plex-config
+        - name: recordings
+          persistentVolumeClaim:
+            claimName: recordings
